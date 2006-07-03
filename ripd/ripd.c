@@ -1677,6 +1677,7 @@ rip_read (struct thread *t)
   int sock;
   int ret;
   int rtenum;
+  int vrecv;
   union rip_buf rip_buf;
   struct rip_packet *packet;
   struct sockaddr_in from;
@@ -1800,7 +1801,7 @@ rip_read (struct thread *t)
     }
 
   /* RIP Version check. RFC2453, 4.6 and 5.1 */
-  int vrecv = ((ri->ri_receive == RI_RIP_UNSPEC) ?
+  vrecv = ((ri->ri_receive == RI_RIP_UNSPEC) ?
                rip->version_recv : ri->ri_receive);
   if ((packet->version == RIPv1) && !(vrecv & RIPv1))
     {
