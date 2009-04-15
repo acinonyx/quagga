@@ -3,6 +3,9 @@
  *
  * This file is part of GNU Zebra.
  *
+ * This file was modified from the original on 30/12/2007
+ * by Vasilis Tsiligiannis <acinonyxs@yahoo.gr>
+ *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation; either version 2, or (at your option) any
@@ -253,6 +256,8 @@ zebra_redistribute_add (int command, struct zserv *client, int length)
     case ZEBRA_ROUTE_OSPF:
     case ZEBRA_ROUTE_OSPF6:
     case ZEBRA_ROUTE_BGP:
+    case ZEBRA_ROUTE_OLSR:
+    case ZEBRA_ROUTE_BATMAN:
       if (! client->redist[type])
 	{
 	  client->redist[type] = 1;
@@ -281,6 +286,8 @@ zebra_redistribute_delete (int command, struct zserv *client, int length)
     case ZEBRA_ROUTE_OSPF:
     case ZEBRA_ROUTE_OSPF6:
     case ZEBRA_ROUTE_BGP:
+    case ZEBRA_ROUTE_OLSR:
+    case ZEBRA_ROUTE_BATMAN:
       client->redist[type] = 0;
       break;
     default:

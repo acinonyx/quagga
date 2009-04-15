@@ -3,6 +3,9 @@
  *
  * This file is part of GNU Zebra.
  *
+ * This file was modified from the original on 30/12/2007
+ * by Vasilis Tsiligiannis <acinonyxs@yahoo.gr>
+ *
  * GNU Zebra is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
  * Free Software Foundation; either version 2, or (at your option) any
@@ -106,11 +109,15 @@ str2distribute_source (const char *str, int *source)
     *source = ZEBRA_ROUTE_STATIC;
   else if (strncmp (str, "r", 1) == 0)
     *source = ZEBRA_ROUTE_RIP;
-  else if (strncmp (str, "b", 1) == 0)
+  else if (strncmp (str, "bg", 2) == 0)
     *source = ZEBRA_ROUTE_BGP;
+  else if (strncmp (str, "ol", 2) == 0)
+    *source = ZEBRA_ROUTE_OLSR;
+  else if (strncmp (str, "ba", 2) == 0)
+    *source = ZEBRA_ROUTE_BATMAN;
   else
     return 0;
-
+  
   return 1;
 }
 
@@ -5302,13 +5309,15 @@ ALIAS (no_ip_ospf_transmit_delay,
 
 DEFUN (ospf_redistribute_source_metric_type,
        ospf_redistribute_source_metric_type_routemap_cmd,
-       "redistribute (kernel|connected|static|rip|bgp) metric <0-16777214> metric-type (1|2) route-map WORD",
+       "redistribute (kernel|connected|static|rip|bgp|olsr|batman) metric <0-16777214> metric-type (1|2) route-map WORD",
        "Redistribute information from another routing protocol\n"
        "Kernel routes\n"
        "Connected\n"
        "Static routes\n"
        "Routing Information Protocol (RIP)\n"
        "Border Gateway Protocol (BGP)\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
        "Metric for redistributed routes\n"
        "OSPF default metric\n"
        "OSPF exterior metric type for redistributed routes\n"
@@ -5346,13 +5355,15 @@ DEFUN (ospf_redistribute_source_metric_type,
 
 ALIAS (ospf_redistribute_source_metric_type,
        ospf_redistribute_source_metric_type_cmd,
-       "redistribute (kernel|connected|static|rip|bgp) metric <0-16777214> metric-type (1|2)",
+       "redistribute (kernel|connected|static|rip|bgp|olsr|batman) metric <0-16777214> metric-type (1|2)",
        "Redistribute information from another routing protocol\n"
        "Kernel routes\n"
        "Connected\n"
        "Static routes\n"
        "Routing Information Protocol (RIP)\n"
        "Border Gateway Protocol (BGP)\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
        "Metric for redistributed routes\n"
        "OSPF default metric\n"
        "OSPF exterior metric type for redistributed routes\n"
@@ -5361,25 +5372,29 @@ ALIAS (ospf_redistribute_source_metric_type,
 
 ALIAS (ospf_redistribute_source_metric_type,
        ospf_redistribute_source_metric_cmd,
-       "redistribute (kernel|connected|static|rip|bgp) metric <0-16777214>",
+       "redistribute (kernel|connected|static|rip|bgp|olsr|batman) metric <0-16777214>",
        "Redistribute information from another routing protocol\n"
        "Kernel routes\n"
        "Connected\n"
        "Static routes\n"
        "Routing Information Protocol (RIP)\n"
        "Border Gateway Protocol (BGP)\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
        "Metric for redistributed routes\n"
        "OSPF default metric\n")
 
 DEFUN (ospf_redistribute_source_type_metric,
        ospf_redistribute_source_type_metric_routemap_cmd,
-       "redistribute (kernel|connected|static|rip|bgp) metric-type (1|2) metric <0-16777214> route-map WORD",
+       "redistribute (kernel|connected|static|rip|bgp|olsr|batman) metric-type (1|2) metric <0-16777214> route-map WORD",
        "Redistribute information from another routing protocol\n"
        "Kernel routes\n"
        "Connected\n"
        "Static routes\n"
        "Routing Information Protocol (RIP)\n"
        "Border Gateway Protocol (BGP)\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
        "OSPF exterior metric type for redistributed routes\n"
        "Set OSPF External Type 1 metrics\n"
        "Set OSPF External Type 2 metrics\n"
@@ -5417,13 +5432,15 @@ DEFUN (ospf_redistribute_source_type_metric,
 
 ALIAS (ospf_redistribute_source_type_metric,
        ospf_redistribute_source_type_metric_cmd,
-       "redistribute (kernel|connected|static|rip|bgp) metric-type (1|2) metric <0-16777214>",
+       "redistribute (kernel|connected|static|rip|bgp|olsr|batman) metric-type (1|2) metric <0-16777214>",
        "Redistribute information from another routing protocol\n"
        "Kernel routes\n"
        "Connected\n"
        "Static routes\n"
        "Routing Information Protocol (RIP)\n"
        "Border Gateway Protocol (BGP)\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
        "OSPF exterior metric type for redistributed routes\n"
        "Set OSPF External Type 1 metrics\n"
        "Set OSPF External Type 2 metrics\n"
@@ -5432,7 +5449,7 @@ ALIAS (ospf_redistribute_source_type_metric,
 
 ALIAS (ospf_redistribute_source_type_metric,
        ospf_redistribute_source_type_cmd,
-       "redistribute (kernel|connected|static|rip|bgp) metric-type (1|2)",
+       "redistribute (kernel|connected|static|rip|bgp|olsr|batman) metric-type (1|2)",
        "Redistribute information from another routing protocol\n"
        "Kernel routes\n"
        "Connected\n"
@@ -5440,28 +5457,35 @@ ALIAS (ospf_redistribute_source_type_metric,
        "Routing Information Protocol (RIP)\n"
        "Border Gateway Protocol (BGP)\n"
        "OSPF exterior metric type for redistributed routes\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
        "Set OSPF External Type 1 metrics\n"
        "Set OSPF External Type 2 metrics\n")
 
 ALIAS (ospf_redistribute_source_type_metric,
        ospf_redistribute_source_cmd,
-       "redistribute (kernel|connected|static|rip|bgp)",
-       "Redistribute information from another routing protocol\n"
-       "Kernel routes\n"
-       "Connected\n"
-       "Static routes\n"
-       "Routing Information Protocol (RIP)\n"
-       "Border Gateway Protocol (BGP)\n")
-
-DEFUN (ospf_redistribute_source_metric_routemap,
-       ospf_redistribute_source_metric_routemap_cmd,
-       "redistribute (kernel|connected|static|rip|bgp) metric <0-16777214> route-map WORD",
+       "redistribute (kernel|connected|static|rip|bgp|olsr|batman)",
        "Redistribute information from another routing protocol\n"
        "Kernel routes\n"
        "Connected\n"
        "Static routes\n"
        "Routing Information Protocol (RIP)\n"
        "Border Gateway Protocol (BGP)\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
+	)
+
+DEFUN (ospf_redistribute_source_metric_routemap,
+       ospf_redistribute_source_metric_routemap_cmd,
+       "redistribute (kernel|connected|static|rip|bgp|olsr|batman) metric <0-16777214> route-map WORD",
+       "Redistribute information from another routing protocol\n"
+       "Kernel routes\n"
+       "Connected\n"
+       "Static routes\n"
+       "Routing Information Protocol (RIP)\n"
+       "Border Gateway Protocol (BGP)\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
        "Metric for redistributed routes\n"
        "OSPF default metric\n"
        "Route map reference\n"
@@ -5490,13 +5514,15 @@ DEFUN (ospf_redistribute_source_metric_routemap,
 
 DEFUN (ospf_redistribute_source_type_routemap,
        ospf_redistribute_source_type_routemap_cmd,
-       "redistribute (kernel|connected|static|rip|bgp) metric-type (1|2) route-map WORD",
+       "redistribute (kernel|connected|static|rip|bgp|olsr|batman) metric-type (1|2) route-map WORD",
        "Redistribute information from another routing protocol\n"
        "Kernel routes\n"
        "Connected\n"
        "Static routes\n"
        "Routing Information Protocol (RIP)\n"
        "Border Gateway Protocol (BGP)\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
        "OSPF exterior metric type for redistributed routes\n"
        "Set OSPF External Type 1 metrics\n"
        "Set OSPF External Type 2 metrics\n"
@@ -5526,13 +5552,15 @@ DEFUN (ospf_redistribute_source_type_routemap,
 
 DEFUN (ospf_redistribute_source_routemap,
        ospf_redistribute_source_routemap_cmd,
-       "redistribute (kernel|connected|static|rip|bgp) route-map WORD",
+       "redistribute (kernel|connected|static|rip|bgp|olsr|batman) route-map WORD",
        "Redistribute information from another routing protocol\n"
        "Kernel routes\n"
        "Connected\n"
        "Static routes\n"
        "Routing Information Protocol (RIP)\n"
        "Border Gateway Protocol (BGP)\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
        "Route map reference\n"
        "Pointer to route-map entries\n")
 {
@@ -5553,14 +5581,17 @@ DEFUN (ospf_redistribute_source_routemap,
 
 DEFUN (no_ospf_redistribute_source,
        no_ospf_redistribute_source_cmd,
-       "no redistribute (kernel|connected|static|rip|bgp)",
+       "no redistribute (kernel|connected|static|rip|bgp|olsr|batman)",
        NO_STR
        "Redistribute information from another routing protocol\n"
        "Kernel routes\n"
        "Connected\n"
        "Static routes\n"
        "Routing Information Protocol (RIP)\n"
-       "Border Gateway Protocol (BGP)\n")
+       "Border Gateway Protocol (BGP)\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
+       )
 {
   struct ospf *ospf = vty->index;
   int source;
@@ -5574,7 +5605,7 @@ DEFUN (no_ospf_redistribute_source,
 
 DEFUN (ospf_distribute_list_out,
        ospf_distribute_list_out_cmd,
-       "distribute-list WORD out (kernel|connected|static|rip|bgp)",
+       "distribute-list WORD out (kernel|connected|static|rip|bgp|olsr|batman)",
        "Filter networks in routing updates\n"
        "Access-list name\n"
        OUT_STR
@@ -5582,7 +5613,10 @@ DEFUN (ospf_distribute_list_out,
        "Connected\n"
        "Static routes\n"
        "Routing Information Protocol (RIP)\n"
-       "Border Gateway Protocol (BGP)\n")
+       "Border Gateway Protocol (BGP)\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
+)
 {
   struct ospf *ospf = vty->index;
   int source;
@@ -5596,7 +5630,7 @@ DEFUN (ospf_distribute_list_out,
 
 DEFUN (no_ospf_distribute_list_out,
        no_ospf_distribute_list_out_cmd,
-       "no distribute-list WORD out (kernel|connected|static|rip|bgp)",
+       "no distribute-list WORD out (kernel|connected|static|rip|bgp|olsr|batman)",
        NO_STR
        "Filter networks in routing updates\n"
        "Access-list name\n"
@@ -5605,7 +5639,10 @@ DEFUN (no_ospf_distribute_list_out,
        "Connected\n"
        "Static routes\n"
        "Routing Information Protocol (RIP)\n"
-       "Border Gateway Protocol (BGP)\n")
+       "Border Gateway Protocol (BGP)\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
+)
 {
   struct ospf *ospf = vty->index;
   int source;
@@ -7121,7 +7158,8 @@ config_write_virtual_link (struct vty *vty, struct ospf *ospf)
 
 
 const char *distribute_str[] = { "system", "kernel", "connected", "static",
-				"rip", "ripng", "ospf", "ospf6", "isis", "bgp"};
+				"rip", "ripng", "ospf", "ospf6", "isis", "bgp",
+				"hsls","olsr","batman"};
 int
 config_write_ospf_redistribute (struct vty *vty, struct ospf *ospf)
 {

@@ -53,6 +53,10 @@ route_type_str (u_char type)
       return "isis";
     case ZEBRA_ROUTE_BGP:
       return "bgp";
+    case ZEBRA_ROUTE_OLSR:
+      return "olsr";
+    case ZEBRA_ROUTE_BATMAN:
+      return "batman";
     default:
       return "unknown";
     }
@@ -84,6 +88,12 @@ route_type_char (u_char type)
       return 'I';
     case ZEBRA_ROUTE_BGP:
       return 'B';
+    case ZEBRA_ROUTE_HSLS:
+      return 'H';
+    case ZEBRA_ROUTE_OLSR:
+      return 'L';
+    case ZEBRA_ROUTE_BATMAN:
+      return 'M';
     default:
       return '?';
     }
@@ -755,8 +765,8 @@ vty_show_ip_route (struct vty *vty, struct route_node *rn, struct rib *rib)
 }
 
 #define SHOW_ROUTE_V4_HEADER "Codes: K - kernel route, C - connected, " \
-  "S - static, R - RIP, O - OSPF,%s       I - ISIS, B - BGP, " \
-  "> - selected route, * - FIB route%s%s"
+  "S - static, R - RIP, O - OSPF,%s       I - ISIS, B - BGP, H - HSLS, " \
+  "L - OLSR, M - BATMAN, > - selected route, * - FIB route%s%s"
 
 DEFUN (show_ip_route,
        show_ip_route_cmd,
@@ -874,7 +884,7 @@ DEFUN (show_ip_route_supernets,
 
 DEFUN (show_ip_route_protocol,
        show_ip_route_protocol_cmd,
-       "show ip route (bgp|connected|isis|kernel|ospf|rip|static)",
+       "show ip route (bgp|connected|isis|kernel|ospf|rip|olsr|batman|static)",
        SHOW_STR
        IP_STR
        "IP routing table\n"
@@ -884,6 +894,8 @@ DEFUN (show_ip_route_protocol,
        "Kernel\n"
        "Open Shortest Path First (OSPF)\n"
        "Routing Information Protocol (RIP)\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
        "Static routes\n")
 {
   int type;
@@ -892,13 +904,13 @@ DEFUN (show_ip_route_protocol,
   struct rib *rib;
   int first = 1;
 
-  if (strncmp (argv[0], "b", 1) == 0)
+  if (strncmp (argv[0], "bg", 2) == 0)
     type = ZEBRA_ROUTE_BGP;
   else if (strncmp (argv[0], "c", 1) == 0)
     type = ZEBRA_ROUTE_CONNECT;
   else if (strncmp (argv[0], "k", 1) ==0)
     type = ZEBRA_ROUTE_KERNEL;
-  else if (strncmp (argv[0], "o", 1) == 0)
+  else if (strncmp (argv[0], "os", 2) == 0)
     type = ZEBRA_ROUTE_OSPF;
   else if (strncmp (argv[0], "i", 1) == 0)
     type = ZEBRA_ROUTE_ISIS;
@@ -906,6 +918,10 @@ DEFUN (show_ip_route_protocol,
     type = ZEBRA_ROUTE_RIP;
   else if (strncmp (argv[0], "s", 1) == 0)
     type = ZEBRA_ROUTE_STATIC;
+  else if (strncmp (argv[0], "ol", 2) == 0)
+    type = ZEBRA_ROUTE_OLSR;
+  else if (strncmp (argv[0], "ba", 2) == 0)
+    type = ZEBRA_ROUTE_BATMAN;
   else 
     {
       vty_out (vty, "Unknown route type%s", VTY_NEWLINE);
@@ -1732,7 +1748,7 @@ DEFUN (show_ipv6_route_prefix_longer,
 
 DEFUN (show_ipv6_route_protocol,
        show_ipv6_route_protocol_cmd,
-       "show ipv6 route (bgp|connected|isis|kernel|ospf6|ripng|static)",
+       "show ipv6 route (bgp|connected|isis|kernel|ospf6|ripng|olsr|batman|static)",
        SHOW_STR
        IP_STR
        "IP routing table\n"
@@ -1742,6 +1758,8 @@ DEFUN (show_ipv6_route_protocol,
        "Kernel\n"
        "Open Shortest Path First (OSPFv3)\n"
        "Routing Information Protocol (RIPng)\n"
+       "Optimized Link State Routing (OLSR)\n"
+       "Better Approach to Mobile Ad-Hoc Networking (BATMAN)\n"
        "Static routes\n")
 {
   int type;
@@ -1750,13 +1768,13 @@ DEFUN (show_ipv6_route_protocol,
   struct rib *rib;
   int first = 1;
 
-  if (strncmp (argv[0], "b", 1) == 0)
+  if (strncmp (argv[0], "bg", 2) == 0)
     type = ZEBRA_ROUTE_BGP;
   else if (strncmp (argv[0], "c", 1) == 0)
     type = ZEBRA_ROUTE_CONNECT;
   else if (strncmp (argv[0], "k", 1) ==0)
     type = ZEBRA_ROUTE_KERNEL;
-  else if (strncmp (argv[0], "o", 1) == 0)
+  else if (strncmp (argv[0], "os", 2) == 0)
     type = ZEBRA_ROUTE_OSPF6;
   else if (strncmp (argv[0], "i", 1) == 0)
     type = ZEBRA_ROUTE_ISIS;
@@ -1764,7 +1782,11 @@ DEFUN (show_ipv6_route_protocol,
     type = ZEBRA_ROUTE_RIPNG;
   else if (strncmp (argv[0], "s", 1) == 0)
     type = ZEBRA_ROUTE_STATIC;
-  else 
+  else if (strncmp (argv[0], "ol", 2) == 0)
+     type = ZEBRA_ROUTE_OLSR;
+  else if (strncmp (argv[0], "ba", 2) == 0)
+     type = ZEBRA_ROUTE_BATMAN;
+  else
     {
       vty_out (vty, "Unknown route type%s", VTY_NEWLINE);
       return CMD_WARNING;
