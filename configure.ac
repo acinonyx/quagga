@@ -8,7 +8,7 @@
 ## $Id: configure.ac,v 1.85.2.15 2006/05/08 17:13:34 paul Exp $
 AC_PREREQ(2.53)
 
-AC_INIT(Quagga, 0.98.6, [http://bugzilla.quagga.net])
+AC_INIT(Quagga, 0.98.6-acinonyx, [http://bugzilla.quagga.net])
 AC_CONFIG_SRCDIR(lib/zebra.h)
 
 dnl -----------------------------------
