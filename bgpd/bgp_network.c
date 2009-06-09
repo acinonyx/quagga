@@ -185,6 +185,7 @@ bgp_accept (struct thread *thread)
     peer->fd = bgp_sock;
     peer->status = Active;
     peer->local_id = peer1->local_id;
+    peer->v_holdtime = BGP_LARGE_HOLDTIME;
 
     /* Make peer's address string. */
     sockunion2str (&su, buf, SU_ADDRSTRLEN);
