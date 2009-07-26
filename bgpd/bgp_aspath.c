@@ -1839,6 +1839,7 @@ void
 aspath_finish (void)
 {
   hash_free (ashash);
+  ashash = NULL;
   
   if (snmp_stream)
     stream_free (snmp_stream);
