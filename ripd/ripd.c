@@ -1372,6 +1372,9 @@ rip_create_socket (struct sockaddr_in *from)
 #ifdef RIP_RECVMSG
   setsockopt_pktinfo (sock);
 #endif /* RIP_RECVMSG */
+#ifdef IPTOS_PREC_INTERNETCONTROL
+  setsockopt_ipv4_tos (sock, IPTOS_PREC_INTERNETCONTROL);
+#endif
 
   if (ripd_privs.change (ZPRIVS_RAISE))
       zlog_err ("rip_create_socket: could not raise privs");
@@ -2973,6 +2976,7 @@ DEFUN (no_rip_route,
   return CMD_SUCCESS;
 }
 
+#if 0
 static void
 rip_update_default_metric (void)
 {
@@ -2984,6 +2988,7 @@ rip_update_default_metric (void)
       if (rinfo->type != ZEBRA_ROUTE_RIP && rinfo->type != ZEBRA_ROUTE_CONNECT)
         rinfo->metric = rip->default_metric;
 }
+#endif
 
 DEFUN (rip_default_metric,
        rip_default_metric_cmd,

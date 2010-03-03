@@ -135,6 +135,7 @@ ospf_ase_complete_direct_routes (struct ospf_route *ro, struct in_addr nexthop)
 {
   struct listnode *node;
   struct ospf_path *op;
+  struct interface *ifp;
 
   for (ALL_LIST_ELEMENTS_RO (ro->paths, node, op))
     if (op->nexthop.s_addr == 0)
@@ -156,6 +157,7 @@ ospf_ase_forward_address_check (struct ospf *ospf, struct in_addr fwd_addr)
   return 1;
 }
 
+#if 0
 /* Calculate ASBR route. */
 static struct ospf_route *
 ospf_ase_calculate_asbr_route (struct ospf *ospf,
@@ -236,6 +238,7 @@ ospf_ase_calculate_asbr_route (struct ospf *ospf,
 
   return asbr_route;
 }
+#endif
 
 static struct ospf_route *
 ospf_ase_calculate_new_route (struct ospf_lsa *lsa,
@@ -593,7 +596,7 @@ ospf_ase_route_match_same (struct route_table *rt, struct prefix *prefix,
        
        if (! IPV4_ADDR_SAME (&op->nexthop, &newop->nexthop))
 	 return 0;
-       if (op->oi->ifp->ifindex != newop->oi->ifp->ifindex)
+       if (op->ifindex != newop->ifindex)
 	 return 0;
      }
    return 1;

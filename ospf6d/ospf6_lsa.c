@@ -207,9 +207,11 @@ ospf6_lsa_age_current (struct ospf6_lsa *lsa)
     zlog_warn ("LSA: quagga_gettime failed, may fail LSA AGEs: %s",
                safe_strerror (errno));
 
-  if (lsa->header->age >= htons (MAXAGE))
+  if (ntohs (lsa->header->age) >= MAXAGE)
     {
-      /* LSA may have been prematurely aged */
+      /* ospf6_lsa_premature_aging () sets age to MAXAGE; when using
+         relative time, we cannot compare against lsa birth time, so
+         we catch this special case here. */
       lsa->header->age = htons (MAXAGE);
       return MAXAGE;
     }
@@ -245,11 +247,6 @@ ospf6_lsa_premature_aging (struct ospf6_lsa *lsa)
   THREAD_OFF (lsa->expire);
   THREAD_OFF (lsa->refresh);
 
-  /* 
-   * The below technique to age out LSA does not work when using relative time 
-   *
-  memset (&lsa->birth, 0, sizeof (struct timeval));
-   */
   lsa->header->age = htons (MAXAGE);
   thread_execute (master, ospf6_lsa_expire, lsa, 0);
 }
@@ -259,7 +256,7 @@ ospf6_lsa_premature_aging (struct ospf6_lsa *lsa)
 int
 ospf6_lsa_compare (struct ospf6_lsa *a, struct ospf6_lsa *b)
 {
-  signed long seqnuma, seqnumb;
+  int seqnuma, seqnumb;
   u_int16_t cksuma, cksumb;
   u_int16_t agea, ageb;
 
@@ -267,16 +264,13 @@ ospf6_lsa_compare (struct ospf6_lsa *a, struct ospf6_lsa *b)
   assert (b && b->header);
   assert (OSPF6_LSA_IS_SAME (a, b));
 
-  seqnuma = ((signed long) ntohl (a->header->seqnum))
-             - (signed long) INITIAL_SEQUENCE_NUMBER;
-  seqnumb = ((signed long) ntohl (b->header->seqnum))
-             - (signed long) INITIAL_SEQUENCE_NUMBER;
+  seqnuma = (int) ntohl (a->header->seqnum);
+  seqnumb = (int) ntohl (b->header->seqnum);
 
   /* compare by sequence number */
-  /* XXX, LS sequence number wrapping */
   if (seqnuma > seqnumb)
     return -1;
-  else if (seqnuma < seqnumb)
+  if (seqnuma < seqnumb)
     return 1;
 
   /* Checksum */

@@ -29,7 +29,7 @@
 #include "log.h"
 
 /* Maskbit. */
-static u_char maskbit[] = {0x00, 0x80, 0xc0, 0xe0, 0xf0,
+static const u_char maskbit[] = {0x00, 0x80, 0xc0, 0xe0, 0xf0,
 			         0xf8, 0xfc, 0xfe, 0xff};
 
 /* Number of bits in prefix type. */
@@ -379,7 +379,7 @@ str2prefix_ipv6 (const char *str, struct prefix_ipv6 *p)
   if (pnt == NULL) 
     {
       ret = inet_pton (AF_INET6, str, &p->prefix);
-      if (ret != 1)
+      if (ret == 0)
 	return 0;
       p->prefixlen = IPV6_MAX_BITLEN;
     }
@@ -392,7 +392,7 @@ str2prefix_ipv6 (const char *str, struct prefix_ipv6 *p)
       *(cp + (pnt - str)) = '\0';
       ret = inet_pton (AF_INET6, cp, &p->prefix);
       free (cp);
-      if (ret != 1)
+      if (ret == 0)
 	return 0;
       plen = (u_char) atoi (++pnt);
       if (plen > 128)
