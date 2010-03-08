@@ -58,6 +58,7 @@ ZEBRA_ROUTE_BGP,        bgp,       bgpd,   'B', 1, 1, "BGP"
 # possible).
 ZEBRA_ROUTE_HSLS,       hsls,      hslsd,  'H', 0, 0, "HSLS"
 ZEBRA_ROUTE_OLSR,       olsr,      oslrd,  'o', 0, 0, "OLSR"
+ZEBRA_ROUTE_BATMAN,     batman,    batmand,'b', 0, 0, "OLSR"
 
 ## help strings
 ZEBRA_ROUTE_SYSTEM, "Reserved route type, for internal use only"
