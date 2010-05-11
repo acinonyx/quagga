@@ -835,7 +835,7 @@ DEFUN (show_ip_route,
 	if (first)
 	  {
 	    vty_out (vty, SHOW_ROUTE_V4_HEADER, VTY_NEWLINE, VTY_NEWLINE,
-		     VTY_NEWLINE);
+		     VTY_NEWLINE, VTY_NEWLINE);
 	    first = 0;
 	  }
 	vty_show_ip_route (vty, rn, rib);
