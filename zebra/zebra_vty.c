@@ -878,7 +878,7 @@ DEFUN (show_ip_route_prefix_longer,
 	  if (first)
 	    {
 	      vty_out (vty, SHOW_ROUTE_V4_HEADER, VTY_NEWLINE,
-		       VTY_NEWLINE, VTY_NEWLINE);
+		       VTY_NEWLINE, VTY_NEWLINE, VTY_NEWLINE);
 	      first = 0;
 	    }
 	  vty_show_ip_route (vty, rn, rib);
@@ -917,7 +917,7 @@ DEFUN (show_ip_route_supernets,
 	    if (first)
 	      {
 		vty_out (vty, SHOW_ROUTE_V4_HEADER, VTY_NEWLINE,
-			 VTY_NEWLINE, VTY_NEWLINE);
+			 VTY_NEWLINE, VTY_NEWLINE, VTY_NEWLINE);
 		first = 0;
 	      }
 	    vty_show_ip_route (vty, rn, rib);
@@ -983,7 +983,7 @@ DEFUN (show_ip_route_protocol,
 	{
 	  if (first)
 	    {
-	      vty_out (vty, SHOW_ROUTE_V4_HEADER,
+	      vty_out (vty, SHOW_ROUTE_V4_HEADER, VTY_NEWLINE,
 		       VTY_NEWLINE, VTY_NEWLINE, VTY_NEWLINE);
 	      first = 0;
 	    }
