@@ -832,7 +832,7 @@ ospf6_dbdesc_recv (struct in6_addr *src, struct in6_addr *dst,
     ((caddr_t) oh + sizeof (struct ospf6_header));
 
   /* Interface MTU check */
-  if (ntohs (dbdesc->ifmtu) != oi->ifmtu)
+  if (!oi->mtu_ignore && ntohs (dbdesc->ifmtu) != oi->ifmtu)
     {
       if (IS_OSPF6_DEBUG_MESSAGE (oh->type, RECV))
         zlog_debug ("I/F MTU mismatch");
@@ -1166,6 +1166,24 @@ ospf6_iobuf_size (unsigned int size)
   iobuflen = size;
 
   return iobuflen;
+}
+
+void
+ospf6_message_terminate (void)
+{
+  if (recvbuf)
+    {
+      XFREE (MTYPE_OSPF6_MESSAGE, recvbuf);
+      recvbuf = NULL;
+    }
+
+  if (sendbuf)
+    {
+      XFREE (MTYPE_OSPF6_MESSAGE, sendbuf);
+      sendbuf = NULL;
+    }
+
+  iobuflen = 0;
 }
 
 int

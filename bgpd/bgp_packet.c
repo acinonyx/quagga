@@ -598,7 +598,6 @@ bgp_write (struct thread *thread)
   struct stream *s; 
   int num;
   unsigned int count = 0;
-  int write_errno;
 
   /* Yes first of all get peer pointer. */
   peer = THREAD_ARG (thread);
@@ -611,46 +610,37 @@ bgp_write (struct thread *thread)
       return 0;
     }
 
-    /* Nonblocking write until TCP output buffer is full.  */
-  while (1)
+  s = bgp_write_packet (peer);
+  if (!s)
+    return 0;	/* nothing to send */
+
+  sockopt_cork (peer->fd, 1);
+
+  /* Nonblocking write until TCP output buffer is full.  */
+  do
     {
       int writenum;
-      int val;
-
-      s = bgp_write_packet (peer);
-      if (! s)
-	return 0;
-      
-      /* XXX: FIXME, the socket should be NONBLOCK from the start
-       * status shouldnt need to be toggled on each write
-       */
-      val = fcntl (peer->fd, F_GETFL, 0);
-      fcntl (peer->fd, F_SETFL, val|O_NONBLOCK);
 
       /* Number of bytes to be sent.  */
       writenum = stream_get_endp (s) - stream_get_getp (s);
 
       /* Call write() system call.  */
       num = write (peer->fd, STREAM_PNT (s), writenum);
-      write_errno = errno;
-      fcntl (peer->fd, F_SETFL, val);
-      if (num <= 0)
+      if (num < 0)
 	{
-	  /* Partial write. */
-	  if (write_errno == EWOULDBLOCK || write_errno == EAGAIN)
-	      break;
+	  /* write failed either retry needed or error */
+	  if (ERRNO_IO_RETRY(errno))
+		break;
 
-	  BGP_EVENT_ADD (peer, TCP_fatal_error);
+          BGP_EVENT_ADD (peer, TCP_fatal_error);
 	  return 0;
 	}
+
       if (num != writenum)
 	{
+	  /* Partial write */
 	  stream_forward_getp (s, num);
-
-	  if (write_errno == EAGAIN)
-	    break;
-
-	  continue;
+	  break;
 	}
 
       /* Retrieve BGP packet type. */
@@ -691,13 +681,14 @@ bgp_write (struct thread *thread)
 
       /* OK we send packet so delete it. */
       bgp_packet_delete (peer);
-
-      if (++count >= BGP_WRITE_PACKET_MAX)
-	break;
     }
+  while (++count < BGP_WRITE_PACKET_MAX &&
+	 (s = bgp_write_packet (peer)) != NULL);
   
   if (bgp_write_proceed (peer))
     BGP_WRITE_ON (peer->t_write, bgp_write, peer->fd);
+  else
+    sockopt_cork (peer->fd, 0);
   
   return 0;
 }
@@ -706,7 +697,7 @@ bgp_write (struct thread *thread)
 static int
 bgp_write_notify (struct peer *peer)
 {
-  int ret;
+  int ret, val;
   u_char type;
   struct stream *s; 
 
@@ -716,7 +707,10 @@ bgp_write_notify (struct peer *peer)
     return 0;
   assert (stream_get_endp (s) >= BGP_HEADER_SIZE);
 
-  /* I'm not sure fd is writable. */
+  /* Put socket in blocking mode. */
+  val = fcntl (peer->fd, F_GETFL, 0);
+  fcntl (peer->fd, F_SETFL, val & ~O_NONBLOCK);
+
   ret = writen (peer->fd, STREAM_DATA (s), stream_get_endp (s));
   if (ret <= 0)
     {
@@ -1885,12 +1879,6 @@ bgp_notify_receive (struct peer *peer, bgp_size_t size)
       bgp_notify.subcode == BGP_NOTIFY_OPEN_UNSUP_PARAM )
     UNSET_FLAG (peer->sflags, PEER_STATUS_CAPABILITY_OPEN);
 
-  /* Also apply to Unsupported Capability until remote router support
-     capability. */
-  if (bgp_notify.code == BGP_NOTIFY_OPEN_ERR &&
-      bgp_notify.subcode == BGP_NOTIFY_OPEN_UNSUP_CAPBL)
-    UNSET_FLAG (peer->sflags, PEER_STATUS_CAPABILITY_OPEN);
-
   BGP_EVENT_ADD (peer, Receive_NOTIFICATION_message);
 }
 
@@ -2021,7 +2009,7 @@ bgp_route_refresh_receive (struct peer *peer, bgp_size_t size)
                    * as possible without going beyond the bounds of the entry,
                    * to maximise debug information.
                    */
-		  int ok ;
+		  int ok;
 		  memset (&orfp, 0, sizeof (struct orf_prefix));
 		  common = *p_pnt++;
 		  /* after ++: p_pnt <= p_end */
@@ -2033,11 +2021,11 @@ bgp_route_refresh_receive (struct peer *peer, bgp_size_t size)
 		      break;
 		    }
 		  ok = ((p_end - p_pnt) >= sizeof(u_int32_t)) ;
-		  if (ok)
+		  if (!ok)
 		    {
-		  memcpy (&seq, p_pnt, sizeof (u_int32_t));
-		  p_pnt += sizeof (u_int32_t);
-		  orfp.seq = ntohl (seq);
+		      memcpy (&seq, p_pnt, sizeof (u_int32_t));
+                      p_pnt += sizeof (u_int32_t);
+                      orfp.seq = ntohl (seq);
 		    }
 		  else
 		    p_pnt = p_end ;
@@ -2075,16 +2063,17 @@ bgp_route_refresh_receive (struct peer *peer, bgp_size_t size)
 			       inet_ntop (orfp.p.family, &orfp.p.u.prefix, buf, BUFSIZ),
 			       orfp.p.prefixlen, orfp.ge, orfp.le,
 			       ok ? "" : " MALFORMED");
-
+                  
 		  if (ok)
-		  ret = prefix_bgp_orf_set (name, afi, &orfp,
-				 (common & ORF_COMMON_PART_DENY ? 0 : 1 ),
-				 (common & ORF_COMMON_PART_REMOVE ? 0 : 1));
+		    ret = prefix_bgp_orf_set (name, afi, &orfp,
+				   (common & ORF_COMMON_PART_DENY ? 0 : 1 ),
+				   (common & ORF_COMMON_PART_REMOVE ? 0 : 1));
 
 		  if (!ok || (ret != CMD_SUCCESS))
 		    {
 		      if (BGP_DEBUG (normal, NORMAL))
-			zlog_debug ("%s Received misformatted prefixlist ORF. Remove All pfxlist", peer->host);
+			zlog_debug ("%s Received misformatted prefixlist ORF."
+			            " Remove All pfxlist", peer->host);
 		      prefix_bgp_orf_remove_all (name);
 		      break;
 		    }
@@ -2269,12 +2258,13 @@ bgp_read_packet (struct peer *peer)
     return 0;
 
   /* Read packet from fd. */
-  nbytes = stream_read_unblock (peer->ibuf, peer->fd, readsize);
+  nbytes = stream_read_try (peer->ibuf, peer->fd, readsize);
 
   /* If read byte is smaller than zero then error occured. */
   if (nbytes < 0) 
     {
-      if (errno == EAGAIN)
+      /* Transient error should retry */
+      if (nbytes == -2)
 	return -1;
 
       plog_err (peer->log, "%s [Error] bgp_read_packet error: %s",

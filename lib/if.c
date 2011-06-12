@@ -664,7 +664,7 @@ connected_log (struct connected *connected, char *str)
       strncat (logbuf, inet_ntop (p->family, &p->u.prefix, buf, BUFSIZ),
 	       BUFSIZ - strlen(logbuf));
     }
-  zlog (NULL, LOG_INFO, logbuf);
+  zlog (NULL, LOG_INFO, "%s", logbuf);
 }
 
 /* If two connected address has same prefix return 1. */
@@ -877,4 +877,22 @@ if_init (void)
   }
 
   memset (&if_master, 0, sizeof if_master);
+}
+
+void
+if_terminate (void)
+{
+  for (;;)
+    {
+      struct interface *ifp;
+
+      ifp = listnode_head (iflist);
+      if (ifp == NULL)
+	break;
+
+      if_delete (ifp);
+    }
+
+  list_delete (iflist);
+  iflist = NULL;
 }

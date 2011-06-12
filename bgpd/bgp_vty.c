@@ -213,6 +213,12 @@ bgp_vty_return (struct vty *vty, int ret)
     case BGP_ERR_TCPSIG_FAILED:
       str = "Error while applying TCP-Sig to session(s)";
       break;
+    case BGP_ERR_NO_EBGP_MULTIHOP_WITH_TTLHACK:
+      str = "ebgp-multihop and ttl-security cannot be configured together";
+      break;
+    case BGP_ERR_NO_IBGP_WITH_TTLHACK:
+      str = "ttl-security only allowed for EBGP peers";
+      break;
     }
   if (str)
     {
@@ -2636,9 +2642,7 @@ peer_ebgp_multihop_set_vty (struct vty *vty, const char *ip_str,
   else
     VTY_GET_INTEGER_RANGE ("TTL", ttl, ttl_str, 1, 255);
 
-  peer_ebgp_multihop_set (peer, ttl);
-
-  return CMD_SUCCESS;
+  return bgp_vty_return (vty,  peer_ebgp_multihop_set (peer, ttl));
 }
 
 static int
@@ -2650,9 +2654,7 @@ peer_ebgp_multihop_unset_vty (struct vty *vty, const char *ip_str)
   if (! peer)
     return CMD_WARNING;
 
-  peer_ebgp_multihop_unset (peer);
-
-  return CMD_SUCCESS;
+  return bgp_vty_return (vty, peer_ebgp_multihop_unset (peer));
 }
 
 /* neighbor ebgp-multihop. */
@@ -3952,6 +3954,42 @@ DEFUN (no_neighbor_allowas_in,
   ret = peer_allowas_in_unset (peer, bgp_node_afi (vty), bgp_node_safi (vty));
 
   return bgp_vty_return (vty, ret);
+}
+
+DEFUN (neighbor_ttl_security,
+       neighbor_ttl_security_cmd,
+       NEIGHBOR_CMD2 "ttl-security hops <1-254>",
+       NEIGHBOR_STR
+       NEIGHBOR_ADDR_STR2
+       "Specify the maximum number of hops to the BGP peer\n")
+{
+  struct peer *peer;
+  int gtsm_hops;
+
+  peer = peer_and_group_lookup_vty (vty, argv[0]);
+  if (! peer)
+    return CMD_WARNING;
+    
+  VTY_GET_INTEGER_RANGE ("", gtsm_hops, argv[1], 1, 254);
+
+  return bgp_vty_return (vty, peer_ttl_security_hops_set (peer, gtsm_hops));
+}
+
+DEFUN (no_neighbor_ttl_security,
+       no_neighbor_ttl_security_cmd,
+       NO_NEIGHBOR_CMD2 "ttl-security hops <1-254>",
+       NO_STR
+       NEIGHBOR_STR
+       NEIGHBOR_ADDR_STR2
+       "Specify the maximum number of hops to the BGP peer\n")
+{
+  struct peer *peer;
+
+  peer = peer_and_group_lookup_vty (vty, argv[0]);
+  if (! peer)
+    return CMD_WARNING;
+
+  return bgp_vty_return (vty, peer_ttl_security_hops_unset (peer));
 }
 
 /* Address family configuration.  */
@@ -6864,6 +6902,16 @@ DEFUN (show_ip_bgp_ipv4_summary,
   return bgp_show_summary_vty (vty, NULL, AFI_IP, SAFI_UNICAST);
 }
 
+ALIAS (show_ip_bgp_ipv4_summary,
+       show_bgp_ipv4_safi_summary_cmd,
+       "show bgp ipv4 (unicast|multicast) summary",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Summary of BGP neighbor status\n")
+
 DEFUN (show_ip_bgp_instance_ipv4_summary,
        show_ip_bgp_instance_ipv4_summary_cmd,
        "show ip bgp view WORD ipv4 (unicast|multicast) summary",
@@ -6882,6 +6930,18 @@ DEFUN (show_ip_bgp_instance_ipv4_summary,
   else
     return bgp_show_summary_vty (vty, argv[0], AFI_IP, SAFI_UNICAST);
 }
+
+ALIAS (show_ip_bgp_instance_ipv4_summary,
+       show_bgp_instance_ipv4_safi_summary_cmd,
+       "show bgp view WORD ipv4 (unicast|multicast) summary",
+       SHOW_STR
+       BGP_STR
+       "BGP view\n"
+       "View name\n"
+       "Address family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Summary of BGP neighbor status\n")
 
 DEFUN (show_ip_bgp_vpnv4_all_summary,
        show_ip_bgp_vpnv4_all_summary_cmd,
@@ -6960,6 +7020,40 @@ ALIAS (show_bgp_instance_summary,
        "View name\n"
        "Address family\n"
        "Summary of BGP neighbor status\n")
+
+DEFUN (show_bgp_ipv6_safi_summary,
+       show_bgp_ipv6_safi_summary_cmd,
+       "show bgp ipv6 (unicast|multicast) summary",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Summary of BGP neighbor status\n")
+{
+  if (strncmp (argv[0], "m", 1) == 0)
+    return bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_MULTICAST);
+
+  return bgp_show_summary_vty (vty, NULL, AFI_IP6, SAFI_UNICAST);
+}
+
+DEFUN (show_bgp_instance_ipv6_safi_summary,
+       show_bgp_instance_ipv6_safi_summary_cmd,
+       "show bgp view WORD ipv6 (unicast|multicast) summary",
+       SHOW_STR
+       BGP_STR
+       "BGP view\n"
+       "View name\n"
+       "Address family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Summary of BGP neighbor status\n")
+{
+  if (strncmp (argv[1], "m", 1) == 0)
+    return bgp_show_summary_vty (vty, argv[0], AFI_IP6, SAFI_MULTICAST);
+
+  return bgp_show_summary_vty (vty, argv[0], AFI_IP6, SAFI_UNICAST);
+}
 
 /* old command */
 DEFUN (show_ipv6_bgp_summary, 
@@ -7552,10 +7646,16 @@ bgp_show_peer (struct vty *vty, struct peer *p)
 		 p->host, VTY_NEWLINE);
     }
 
-  /* EBGP Multihop */
-  if (peer_sort (p) != BGP_PEER_IBGP && p->ttl > 1)
-    vty_out (vty, "  External BGP neighbor may be up to %d hops away.%s",
-	     p->ttl, VTY_NEWLINE);
+  /* EBGP Multihop and GTSM */
+  if (peer_sort (p) != BGP_PEER_IBGP)
+    {
+      if (p->gtsm_hops > 0)
+	vty_out (vty, "  External BGP neighbor may be up to %d hops away.%s",
+		 p->gtsm_hops, VTY_NEWLINE);
+      else if (p->ttl > 1)
+	vty_out (vty, "  External BGP neighbor may be up to %d hops away.%s",
+		 p->ttl, VTY_NEWLINE);
+    }
 
   /* Local address. */
   if (p->su_local)
@@ -8162,6 +8262,41 @@ DEFUN (show_ip_bgp_instance_ipv4_rsclient_summary,
   return bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP, SAFI_UNICAST);
 }
 
+DEFUN (show_bgp_instance_ipv4_safi_rsclient_summary,
+       show_bgp_instance_ipv4_safi_rsclient_summary_cmd,
+       "show bgp view WORD ipv4 (unicast|multicast) rsclient summary",
+       SHOW_STR
+       BGP_STR
+       "BGP view\n"
+       "View name\n"
+       "Address family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Information about Route Server Clients\n"
+       "Summary of all Route Server Clients\n")
+{
+  safi_t safi;
+
+  if (argc == 2) {
+    safi = (strncmp (argv[1], "m", 1) == 0) ? SAFI_MULTICAST : SAFI_UNICAST;
+    return bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP, safi);
+  } else {
+    safi = (strncmp (argv[0], "m", 1) == 0) ? SAFI_MULTICAST : SAFI_UNICAST;
+    return bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP, safi);
+  }
+}
+
+ALIAS (show_bgp_instance_ipv4_safi_rsclient_summary,
+       show_bgp_ipv4_safi_rsclient_summary_cmd,
+       "show bgp ipv4 (unicast|multicast) rsclient summary",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Information about Route Server Clients\n"
+       "Summary of all Route Server Clients\n")
+
 #ifdef HAVE_IPV6
 DEFUN (show_bgp_rsclient_summary,
        show_bgp_rsclient_summary_cmd,
@@ -8206,6 +8341,42 @@ ALIAS (show_bgp_instance_rsclient_summary,
        "Address family\n"
        "Information about Route Server Clients\n"
        "Summary of all Route Server Clients\n")
+
+DEFUN (show_bgp_instance_ipv6_safi_rsclient_summary,
+       show_bgp_instance_ipv6_safi_rsclient_summary_cmd,
+       "show bgp view WORD ipv6 (unicast|multicast) rsclient summary",
+       SHOW_STR
+       BGP_STR
+       "BGP view\n"
+       "View name\n"
+       "Address family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Information about Route Server Clients\n"
+       "Summary of all Route Server Clients\n")
+{
+  safi_t safi;
+
+  if (argc == 2) {
+    safi = (strncmp (argv[1], "m", 1) == 0) ? SAFI_MULTICAST : SAFI_UNICAST;
+    return bgp_show_rsclient_summary_vty (vty, argv[0], AFI_IP6, safi);
+  } else {
+    safi = (strncmp (argv[0], "m", 1) == 0) ? SAFI_MULTICAST : SAFI_UNICAST;
+    return bgp_show_rsclient_summary_vty (vty, NULL, AFI_IP6, safi);
+  }
+}
+
+ALIAS (show_bgp_instance_ipv6_safi_rsclient_summary,
+       show_bgp_ipv6_safi_rsclient_summary_cmd,
+       "show bgp ipv6 (unicast|multicast) rsclient summary",
+       SHOW_STR
+       BGP_STR
+       "Address family\n"
+       "Address Family modifier\n"
+       "Address Family modifier\n"
+       "Information about Route Server Clients\n"
+       "Summary of all Route Server Clients\n")
+
 #endif /* HAVE IPV6 */
 
 /* Redistribute VTY commands.  */
@@ -9824,38 +9995,50 @@ bgp_vty_init (void)
   install_element (VIEW_NODE, &show_ip_bgp_summary_cmd);
   install_element (VIEW_NODE, &show_ip_bgp_instance_summary_cmd);
   install_element (VIEW_NODE, &show_ip_bgp_ipv4_summary_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv4_safi_summary_cmd);
   install_element (VIEW_NODE, &show_ip_bgp_instance_ipv4_summary_cmd);
+  install_element (VIEW_NODE, &show_bgp_instance_ipv4_safi_summary_cmd);
   install_element (VIEW_NODE, &show_ip_bgp_vpnv4_all_summary_cmd);
   install_element (VIEW_NODE, &show_ip_bgp_vpnv4_rd_summary_cmd);
 #ifdef HAVE_IPV6
   install_element (VIEW_NODE, &show_bgp_summary_cmd);
   install_element (VIEW_NODE, &show_bgp_instance_summary_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_summary_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_summary_cmd);
   install_element (VIEW_NODE, &show_bgp_instance_ipv6_summary_cmd);
+  install_element (VIEW_NODE, &show_bgp_instance_ipv6_safi_summary_cmd);
 #endif /* HAVE_IPV6 */
   install_element (RESTRICTED_NODE, &show_ip_bgp_summary_cmd);
   install_element (RESTRICTED_NODE, &show_ip_bgp_instance_summary_cmd);
   install_element (RESTRICTED_NODE, &show_ip_bgp_ipv4_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv4_safi_summary_cmd);
   install_element (RESTRICTED_NODE, &show_ip_bgp_instance_ipv4_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_instance_ipv4_safi_summary_cmd);
   install_element (RESTRICTED_NODE, &show_ip_bgp_vpnv4_all_summary_cmd);
   install_element (RESTRICTED_NODE, &show_ip_bgp_vpnv4_rd_summary_cmd);
 #ifdef HAVE_IPV6
   install_element (RESTRICTED_NODE, &show_bgp_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_instance_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_ipv6_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_instance_ipv6_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_instance_ipv6_safi_summary_cmd);
 #endif /* HAVE_IPV6 */
   install_element (ENABLE_NODE, &show_ip_bgp_summary_cmd);
   install_element (ENABLE_NODE, &show_ip_bgp_instance_summary_cmd);
   install_element (ENABLE_NODE, &show_ip_bgp_ipv4_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv4_safi_summary_cmd);
   install_element (ENABLE_NODE, &show_ip_bgp_instance_ipv4_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_instance_ipv4_safi_summary_cmd);
   install_element (ENABLE_NODE, &show_ip_bgp_vpnv4_all_summary_cmd);
   install_element (ENABLE_NODE, &show_ip_bgp_vpnv4_rd_summary_cmd);
 #ifdef HAVE_IPV6
   install_element (ENABLE_NODE, &show_bgp_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_instance_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_instance_ipv6_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_instance_ipv6_safi_summary_cmd);
 #endif /* HAVE_IPV6 */
 
   /* "show ip bgp neighbors" commands. */
@@ -9919,28 +10102,40 @@ bgp_vty_init (void)
   install_element (VIEW_NODE, &show_ip_bgp_instance_rsclient_summary_cmd);
   install_element (VIEW_NODE, &show_ip_bgp_ipv4_rsclient_summary_cmd);
   install_element (VIEW_NODE, &show_ip_bgp_instance_ipv4_rsclient_summary_cmd);
+  install_element (VIEW_NODE, &show_bgp_instance_ipv4_safi_rsclient_summary_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv4_safi_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_ip_bgp_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_ip_bgp_instance_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_ip_bgp_ipv4_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_ip_bgp_instance_ipv4_rsclient_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_instance_ipv4_safi_rsclient_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv4_safi_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_ip_bgp_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_ip_bgp_instance_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_ip_bgp_ipv4_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_ip_bgp_instance_ipv4_rsclient_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_instance_ipv4_safi_rsclient_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv4_safi_rsclient_summary_cmd);
 
 #ifdef HAVE_IPV6
   install_element (VIEW_NODE, &show_bgp_rsclient_summary_cmd);
   install_element (VIEW_NODE, &show_bgp_ipv6_rsclient_summary_cmd);
   install_element (VIEW_NODE, &show_bgp_instance_rsclient_summary_cmd);
   install_element (VIEW_NODE, &show_bgp_instance_ipv6_rsclient_summary_cmd);
+  install_element (VIEW_NODE, &show_bgp_instance_ipv6_safi_rsclient_summary_cmd);
+  install_element (VIEW_NODE, &show_bgp_ipv6_safi_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_ipv6_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_instance_rsclient_summary_cmd);
   install_element (RESTRICTED_NODE, &show_bgp_instance_ipv6_rsclient_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_instance_ipv6_safi_rsclient_summary_cmd);
+  install_element (RESTRICTED_NODE, &show_bgp_ipv6_safi_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_ipv6_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_instance_rsclient_summary_cmd);
   install_element (ENABLE_NODE, &show_bgp_instance_ipv6_rsclient_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_instance_ipv6_safi_rsclient_summary_cmd);
+  install_element (ENABLE_NODE, &show_bgp_ipv6_safi_rsclient_summary_cmd);
 #endif /* HAVE_IPV6 */
 
   /* "show ip bgp paths" commands. */
@@ -9980,6 +10175,10 @@ bgp_vty_init (void)
   install_element (BGP_IPV6_NODE, &no_bgp_redistribute_ipv6_rmap_metric_cmd);
   install_element (BGP_IPV6_NODE, &no_bgp_redistribute_ipv6_metric_rmap_cmd);
 #endif /* HAVE_IPV6 */
+
+  /* ttl_security commands */
+  install_element (BGP_NODE, &neighbor_ttl_security_cmd);
+  install_element (BGP_NODE, &no_neighbor_ttl_security_cmd);
 
   /* "show bgp memory" commands. */
   install_element (VIEW_NODE, &show_bgp_memory_cmd);

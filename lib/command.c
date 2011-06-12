@@ -3056,7 +3056,7 @@ DEFUN (config_logmsg,
   if ((level = level_match(argv[0])) == ZLOG_DISABLED)
     return CMD_ERR_NO_MATCH;
 
-  zlog(NULL, level, ((message = argv_concat(argv, argc, 1)) ? message : ""));
+  zlog(NULL, level, "%s", ((message = argv_concat(argv, argc, 1)) ? message : ""));
   if (message)
     XFREE(MTYPE_TMP, message);
   return CMD_SUCCESS;
@@ -3650,6 +3650,8 @@ cmd_init (int terminal)
       install_element (VIEW_NODE, &show_thread_cpu_cmd);
       install_element (ENABLE_NODE, &show_thread_cpu_cmd);
       install_element (RESTRICTED_NODE, &show_thread_cpu_cmd);
+      
+      install_element (ENABLE_NODE, &clear_thread_cpu_cmd);
       install_element (VIEW_NODE, &show_work_queues_cmd);
       install_element (ENABLE_NODE, &show_work_queues_cmd);
     }
