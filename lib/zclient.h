@@ -22,6 +22,9 @@
 #ifndef _ZEBRA_ZCLIENT_H
 #define _ZEBRA_ZCLIENT_H
 
+/* For struct zapi_ipv{4,6}. */
+#include "prefix.h"
+
 /* For struct interface and struct connected. */
 #include "if.h"
 
@@ -95,7 +98,7 @@ struct zserv_header
                          * always set to 255 in new zserv.
                          */
   uint8_t version;
-#define ZSERV_VERSION	1
+#define ZSERV_VERSION	2
   uint16_t command;
 };
 

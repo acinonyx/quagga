@@ -421,13 +421,20 @@ bgp_capability_restart (struct peer *peer, struct capability_header *caphdr)
 static as_t
 bgp_capability_as4 (struct peer *peer, struct capability_header *hdr)
 {
+  SET_FLAG (peer->cap, PEER_CAP_AS4_RCV);
+  
+  if (hdr->length != CAPABILITY_CODE_AS4_LEN)
+    {
+      zlog_err ("%s AS4 capability has incorrect data length %d",
+                peer->host, hdr->length);
+      return 0;
+    }
+  
   as_t as4 = stream_getl (BGP_INPUT(peer));
   
   if (BGP_DEBUG (as4, AS4))
     zlog_debug ("%s [AS4] about to set cap PEER_CAP_AS4_RCV, got as4 %u",
                 peer->host, as4);
-  SET_FLAG (peer->cap, PEER_CAP_AS4_RCV);
-  
   return as4;
 }
 
@@ -457,11 +464,16 @@ static const size_t cap_minsizes[] =
   [CAPABILITY_CODE_ORF_OLD]	= sizeof (struct capability_orf_entry),
 };
 
-/* Parse given capability.
+/**
+ * Parse given capability.
  * XXX: This is reading into a stream, but not using stream API
+ *
+ * @param[out] mp_capability Set to 1 on return iff one or more Multiprotocol
+ *                           capabilities were encountered.
  */
 static int
-bgp_capability_parse (struct peer *peer, size_t length, u_char **error)
+bgp_capability_parse (struct peer *peer, size_t length, int *mp_capability,
+		      u_char **error)
 {
   int ret;
   struct stream *s = BGP_INPUT (peer);
@@ -533,6 +545,8 @@ bgp_capability_parse (struct peer *peer, size_t length, u_char **error)
         {
           case CAPABILITY_CODE_MP:
             {
+	      *mp_capability = 1;
+
               /* Ignore capability when override-capability is set. */
               if (! CHECK_FLAG (peer->flags, PEER_FLAG_OVERRIDE_CAPABILITY))
                 {
@@ -689,9 +703,6 @@ peek_for_as4_capability (struct peer *peer, u_char length)
 
 	      if (hdr.code == CAPABILITY_CODE_AS4)
 	        {
-	          if (hdr.length != CAPABILITY_CODE_AS4_LEN)
-	            goto end;
-                  
 	          if (BGP_DEBUG (as4, AS4))
 	            zlog_info ("[AS4] found AS4 capability, about to parse");
 	          as4 = bgp_capability_as4 (peer, &hdr);
@@ -708,9 +719,13 @@ end:
   return as4;
 }
 
-/* Parse open option */
+/**
+ * Parse open option.
+ *
+ * @param[out] mp_capability @see bgp_capability_parse() for semantics.
+ */
 int
-bgp_open_option_parse (struct peer *peer, u_char length, int *capability)
+bgp_open_option_parse (struct peer *peer, u_char length, int *mp_capability)
 {
   int ret;
   u_char *error;
@@ -763,8 +778,7 @@ bgp_open_option_parse (struct peer *peer, u_char length, int *capability)
 	  ret = bgp_auth_parse (peer, opt_length);
 	  break;
 	case BGP_OPEN_OPT_CAP:
-	  ret = bgp_capability_parse (peer, opt_length, &error);
-	  *capability = 1;
+	  ret = bgp_capability_parse (peer, opt_length, mp_capability, &error);
 	  break;
 	default:
 	  bgp_notify_send (peer, 
@@ -807,9 +821,10 @@ bgp_open_option_parse (struct peer *peer, u_char length, int *capability)
 	}
     }
 
-  /* Check there is no common capability send Unsupported Capability
+  /* Check there are no common AFI/SAFIs and send Unsupported Capability
      error. */
-  if (*capability && ! CHECK_FLAG (peer->flags, PEER_FLAG_OVERRIDE_CAPABILITY))
+  if (*mp_capability &&
+      ! CHECK_FLAG (peer->flags, PEER_FLAG_OVERRIDE_CAPABILITY))
     {
       if (! peer->afc_nego[AFI_IP][SAFI_UNICAST] 
 	  && ! peer->afc_nego[AFI_IP][SAFI_MULTICAST]
@@ -817,7 +832,9 @@ bgp_open_option_parse (struct peer *peer, u_char length, int *capability)
 	  && ! peer->afc_nego[AFI_IP6][SAFI_UNICAST]
 	  && ! peer->afc_nego[AFI_IP6][SAFI_MULTICAST])
 	{
-	  plog_err (peer->log, "%s [Error] No common capability", peer->host);
+	  plog_err (peer->log, "%s [Error] Configured AFI/SAFIs do not "
+		    "overlap with received MP capabilities",
+		    peer->host);
 
 	  if (error != error_data)
 

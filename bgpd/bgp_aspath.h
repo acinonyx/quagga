@@ -58,6 +58,7 @@ struct aspath
   /* String expression of AS path.  This string is used by vty output
      and AS path regular expression match.  */
   char *str;
+  unsigned short str_len;
 };
 
 #define ASPATH_STR_DEFAULT_LEN 32
@@ -72,6 +73,7 @@ extern struct aspath *aspath_prepend (struct aspath *, struct aspath *);
 extern struct aspath *aspath_filter_exclude (struct aspath *, struct aspath *);
 extern struct aspath *aspath_add_seq (struct aspath *, as_t);
 extern struct aspath *aspath_add_confed_seq (struct aspath *, as_t);
+extern int aspath_cmp (const void *, const void *);
 extern int aspath_cmp_left (const struct aspath *, const struct aspath *);
 extern int aspath_cmp_left_confed (const struct aspath *, const struct aspath *);
 extern struct aspath *aspath_delete_confed_seq (struct aspath *);

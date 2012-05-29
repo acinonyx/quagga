@@ -48,6 +48,7 @@ const char *zlog_proto_names[] =
   "BGP",
   "OSPF",
   "RIPNG",
+  "BABEL",
   "OSPF6",
   "ISIS",
   "MASC",
@@ -843,6 +844,7 @@ static const struct zebra_desc_table command_types[] = {
   DESC_ENTRY	(ZEBRA_ROUTER_ID_ADD),
   DESC_ENTRY	(ZEBRA_ROUTER_ID_DELETE),
   DESC_ENTRY	(ZEBRA_ROUTER_ID_UPDATE),
+  DESC_ENTRY	(ZEBRA_HELLO),
 };
 #undef DESC_ENTRY
 
@@ -927,18 +929,20 @@ proto_redistnum(int afi, const char *s)
 	return ZEBRA_ROUTE_STATIC;
       else if (strncmp (s, "r", 1) == 0)
 	return ZEBRA_ROUTE_RIP;
-      else if (strncmp (s, "o", 1) == 0)
+      else if (strncmp (s, "os", 2) == 0)
 	return ZEBRA_ROUTE_OSPF;
       else if (strncmp (s, "i", 1) == 0)
 	return ZEBRA_ROUTE_ISIS;
-      else if (strncmp (s, "b", 1) == 0)
+      else if (strncmp (s, "bg", 2) == 0)
 	return ZEBRA_ROUTE_BGP;
       else if (strncmp (s, "h", 1) == 0)
 	return ZEBRA_ROUTE_HSLS;
       else if (strncmp (s, "ol", 2) == 0)
 	return ZEBRA_ROUTE_OLSR;
-      else if (strncmp (s, "ba", 2) == 0)
+      else if (strncmp (s, "bat", 3) == 0)
 	return ZEBRA_ROUTE_BATMAN;
+      else if (strncmp (s, "bab", 3) == 0)
+	return ZEBRA_ROUTE_BABEL;
     }
   if (afi == AFI_IP6)
     {
@@ -950,18 +954,20 @@ proto_redistnum(int afi, const char *s)
 	return ZEBRA_ROUTE_STATIC;
       else if (strncmp (s, "r", 1) == 0)
 	return ZEBRA_ROUTE_RIPNG;
-      else if (strncmp (s, "o", 1) == 0)
+      else if (strncmp (s, "os", 2) == 0)
 	return ZEBRA_ROUTE_OSPF6;
       else if (strncmp (s, "i", 1) == 0)
 	return ZEBRA_ROUTE_ISIS;
-      else if (strncmp (s, "b", 1) == 0)
+      else if (strncmp (s, "bg", 2) == 0)
 	return ZEBRA_ROUTE_BGP;
       else if (strncmp (s, "h", 1) == 0)
 	return ZEBRA_ROUTE_HSLS;
       else if (strncmp (s, "ol", 2) == 0)
 	return ZEBRA_ROUTE_OLSR;
-      else if (strncmp (s, "ba", 2) == 0)
+      else if (strncmp (s, "bat", 3) == 0)
 	return ZEBRA_ROUTE_BATMAN;
+      else if (strncmp (s, "bab", 3) == 0)
+	return ZEBRA_ROUTE_BABEL;
     }
   return -1;
 }

@@ -54,6 +54,7 @@ ZEBRA_ROUTE_BGP,        bgp,       bgpd,   'B', 1, 1, "BGP"
 ZEBRA_ROUTE_HSLS,       hsls,      hslsd,  'H', 1, 1, "HSLS"
 ZEBRA_ROUTE_OLSR,       olsr,      olsrd,  'o', 1, 1, "OLSR"
 ZEBRA_ROUTE_BATMAN,     batman,    batmand,'b', 1, 1, "BATMAN"
+ZEBRA_ROUTE_BABEL,      babel,     babeld, 'A', 1, 1, "Babel"
 
 ## help strings
 ZEBRA_ROUTE_SYSTEM, "Reserved route type, for internal use only"
@@ -69,3 +70,5 @@ ZEBRA_ROUTE_BGP,    "Border Gateway Protocol (BGP)"
 ZEBRA_ROUTE_HSLS,   "Hazy-Sighted Link State Protocol (HSLS)"
 ZEBRA_ROUTE_OLSR,   "Optimized Link State Routing (OLSR)"
 ZEBRA_ROUTE_BATMAN, "Better Approach to Mobile Ad-Hoc Networking (BATMAN)"
+ZEBRA_ROUTE_BABEL,  "Babel routing protocol (Babel)"
+

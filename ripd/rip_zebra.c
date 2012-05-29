@@ -210,7 +210,8 @@ static struct {
   {ZEBRA_ROUTE_BGP,     2, "bgp"},
   {ZEBRA_ROUTE_HSLS,    1, "hsls"},
   {ZEBRA_ROUTE_OLSR,    2, "olsr"},
-  {ZEBRA_ROUTE_BATMAN,  2, "batman"},
+  {ZEBRA_ROUTE_BATMAN,  3, "batman"},
+  {ZEBRA_ROUTE_BABEL,   3, "babel"},
   {0, 0, NULL}
 };
 

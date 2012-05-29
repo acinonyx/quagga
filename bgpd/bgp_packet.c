@@ -149,7 +149,6 @@ bgp_update_packet (struct peer *peer, afi_t afi, safi_t safi)
   struct bgp_info *binfo = NULL;
   bgp_size_t total_attr_len = 0;
   unsigned long pos;
-  char buf[BUFSIZ];
 
   s = peer->work;
   stream_reset (s);
@@ -199,10 +198,14 @@ bgp_update_packet (struct peer *peer, afi_t afi, safi_t safi)
 	stream_put_prefix (s, &rn->p);
       
       if (BGP_DEBUG (update, UPDATE_OUT))
-	zlog (peer->log, LOG_DEBUG, "%s send UPDATE %s/%d",
-	      peer->host,
-	      inet_ntop (rn->p.family, &(rn->p.u.prefix), buf, BUFSIZ),
-	      rn->p.prefixlen);
+        {
+          char buf[INET6_BUFSIZ];
+
+          zlog (peer->log, LOG_DEBUG, "%s send UPDATE %s/%d",
+                peer->host,
+                inet_ntop (rn->p.family, &(rn->p.u.prefix), buf, INET6_BUFSIZ),
+                rn->p.prefixlen);
+        }
 
       /* Synchnorize attribute.  */
       if (adj->attr)
@@ -285,7 +288,6 @@ bgp_withdraw_packet (struct peer *peer, afi_t afi, safi_t safi)
   unsigned long pos;
   bgp_size_t unfeasible_len;
   bgp_size_t total_attr_len;
-  char buf[BUFSIZ];
 
   s = peer->work;
   stream_reset (s);
@@ -324,10 +326,14 @@ bgp_withdraw_packet (struct peer *peer, afi_t afi, safi_t safi)
 	}
 
       if (BGP_DEBUG (update, UPDATE_OUT))
-	zlog (peer->log, LOG_DEBUG, "%s send UPDATE %s/%d -- unreachable",
-	      peer->host,
-	      inet_ntop (rn->p.family, &(rn->p.u.prefix), buf, BUFSIZ),
-	      rn->p.prefixlen);
+        {
+          char buf[INET6_BUFSIZ];
+
+          zlog (peer->log, LOG_DEBUG, "%s send UPDATE %s/%d -- unreachable",
+                peer->host,
+                inet_ntop (rn->p.family, &(rn->p.u.prefix), buf, INET6_BUFSIZ),
+                rn->p.prefixlen);
+        }
 
       peer->scount[afi][safi]--;
 
@@ -366,8 +372,6 @@ bgp_default_update_send (struct peer *peer, struct attr *attr,
   struct prefix p;
   unsigned long pos;
   bgp_size_t total_attr_len;
-  char attrstr[BUFSIZ];
-  char buf[BUFSIZ];
 
   if (DISABLE_BGP_ANNOUNCE)
     return;
@@ -382,9 +386,13 @@ bgp_default_update_send (struct peer *peer, struct attr *attr,
   /* Logging the attribute. */
   if (BGP_DEBUG (update, UPDATE_OUT))
     {
+      char attrstr[BUFSIZ];
+      char buf[INET6_BUFSIZ];
+      attrstr[0] = '\0';
+
       bgp_dump_attr (peer, attr, attrstr, BUFSIZ);
       zlog (peer->log, LOG_DEBUG, "%s send UPDATE %s/%d %s",
-	    peer->host, inet_ntop(p.family, &(p.u.prefix), buf, BUFSIZ),
+	    peer->host, inet_ntop(p.family, &(p.u.prefix), buf, INET6_BUFSIZ),
 	    p.prefixlen, attrstr);
     }
 
@@ -435,7 +443,6 @@ bgp_default_withdraw_send (struct peer *peer, afi_t afi, safi_t safi)
   unsigned long cp;
   bgp_size_t unfeasible_len;
   bgp_size_t total_attr_len;
-  char buf[BUFSIZ];
 
   if (DISABLE_BGP_ANNOUNCE)
     return;
@@ -451,9 +458,13 @@ bgp_default_withdraw_send (struct peer *peer, afi_t afi, safi_t safi)
   pos = 0;
 
   if (BGP_DEBUG (update, UPDATE_OUT))
-    zlog (peer->log, LOG_DEBUG, "%s send UPDATE %s/%d -- unreachable",
-          peer->host, inet_ntop(p.family, &(p.u.prefix), buf, BUFSIZ),
-          p.prefixlen);
+    {
+      char buf[INET6_BUFSIZ];
+
+      zlog (peer->log, LOG_DEBUG, "%s send UPDATE %s/%d -- unreachable",
+            peer->host, inet_ntop(p.family, &(p.u.prefix), buf, INET6_BUFSIZ),
+            p.prefixlen);
+    }
 
   s = stream_new (BGP_MAX_PACKET_SIZE);
 
@@ -1152,7 +1163,7 @@ bgp_open_receive (struct peer *peer, bgp_size_t size)
   as_t as4 = 0;
   struct peer *realpeer;
   struct in_addr remote_id;
-  int capability;
+  int mp_capability;
   u_int8_t notify_data_remote_as[2];
   u_int8_t notify_data_remote_id[4];
 
@@ -1174,7 +1185,7 @@ bgp_open_receive (struct peer *peer, bgp_size_t size)
 	        inet_ntoa (remote_id));
   
   /* BEGIN to read the capability here, but dont do it yet */
-  capability = 0;
+  mp_capability = 0;
   optlen = stream_getc (peer->ibuf);
   
   if (optlen != 0)
@@ -1459,9 +1470,13 @@ bgp_open_receive (struct peer *peer, bgp_size_t size)
   /* Open option part parse. */
   if (optlen != 0) 
     {
-      ret = bgp_open_option_parse (peer, optlen, &capability);
-      if (ret < 0)
-	return ret;
+      if ((ret = bgp_open_option_parse (peer, optlen, &mp_capability)) < 0)
+        {
+          bgp_notify_send (peer,
+                 BGP_NOTIFY_OPEN_ERR,
+                 BGP_NOTIFY_OPEN_UNACEP_HOLDTIME);
+	  return ret;
+        }
     }
   else
     {
@@ -1470,8 +1485,13 @@ bgp_open_receive (struct peer *peer, bgp_size_t size)
 		   peer->host);
     }
 
-  /* Override capability. */
-  if (! capability || CHECK_FLAG (peer->flags, PEER_FLAG_OVERRIDE_CAPABILITY))
+  /* 
+   * Assume that the peer supports the locally configured set of
+   * AFI/SAFIs if the peer did not send us any Mulitiprotocol
+   * capabilities, or if 'override-capability' is configured.
+   */
+  if (! mp_capability ||
+      CHECK_FLAG (peer->flags, PEER_FLAG_OVERRIDE_CAPABILITY))
     {
       peer->afc_nego[AFI_IP][SAFI_UNICAST] = peer->afc[AFI_IP][SAFI_UNICAST];
       peer->afc_nego[AFI_IP][SAFI_MULTICAST] = peer->afc[AFI_IP][SAFI_MULTICAST];
@@ -1499,6 +1519,7 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
   u_char *end;
   struct stream *s;
   struct attr attr;
+  struct attr_extra extra;
   bgp_size_t attribute_len;
   bgp_size_t update_len;
   bgp_size_t withdraw_len;
@@ -1506,7 +1527,6 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
   struct bgp_nlri withdraw;
   struct bgp_nlri mp_update;
   struct bgp_nlri mp_withdraw;
-  char attrstr[BUFSIZ] = "";
 
   /* Status must be Established. */
   if (peer->status != Established) 
@@ -1519,10 +1539,12 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
 
   /* Set initial values. */
   memset (&attr, 0, sizeof (struct attr));
+  memset (&extra, 0, sizeof (struct attr_extra));
   memset (&update, 0, sizeof (struct bgp_nlri));
   memset (&withdraw, 0, sizeof (struct bgp_nlri));
   memset (&mp_update, 0, sizeof (struct bgp_nlri));
   memset (&mp_withdraw, 0, sizeof (struct bgp_nlri));
+  attr.extra = &extra;
 
   s = peer->ibuf;
   end = stream_pnt (s) + size;
@@ -1623,6 +1645,9 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
   if (attr_parse_ret == BGP_ATTR_PARSE_WITHDRAW
       || BGP_DEBUG (update, UPDATE_IN))
     {
+      char attrstr[BUFSIZ];
+      attrstr[0] = '\0';
+
       ret= bgp_dump_attr (peer, &attr, attrstr, BUFSIZ);
       int lvl = (attr_parse_ret == BGP_ATTR_PARSE_WITHDRAW)
                  ? LOG_ERR : LOG_DEBUG;
@@ -1647,8 +1672,6 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
       if (ret < 0)
         {
           bgp_attr_unintern_sub (&attr);
-          if (attr.extra)
-            bgp_attr_extra_free (&attr);
 	  return -1;
 	}
 
@@ -1675,8 +1698,6 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
 	  if (ret < 0)
 	    {
 	      bgp_attr_unintern_sub (&attr);
-              if (attr.extra)
-                bgp_attr_extra_free (&attr);
 	      return -1;
             }
 
@@ -1823,9 +1844,7 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
   /* Everything is done.  We unintern temporary structures which
      interned in bgp_attr_parse(). */
   bgp_attr_unintern_sub (&attr);
-  if (attr.extra)
-    bgp_attr_extra_free (&attr);
-  
+
   /* If peering is stopped due to some reason, do not generate BGP
      event.  */
   if (peer->status != Established)
@@ -1835,8 +1854,8 @@ bgp_update_receive (struct peer *peer, bgp_size_t size)
   peer->update_in++;
   peer->update_time = bgp_clock ();
 
-  /* Generate BGP event. */
-  BGP_EVENT_ADD (peer, Receive_UPDATE_message);
+  /* Cancel holdtime timer */
+  BGP_TIMER_OFF (peer->t_holdtime);
 
   return 0;
 }
@@ -2018,7 +2037,6 @@ bgp_route_refresh_receive (struct peer *peer, bgp_size_t size)
 	      u_int32_t seq;
 	      int psize;
 	      char name[BUFSIZ];
-	      char buf[BUFSIZ];
 	      int ret;
 
 	      if (BGP_DEBUG (normal, NORMAL))
@@ -2088,15 +2106,19 @@ bgp_route_refresh_receive (struct peer *peer, bgp_size_t size)
 		  p_pnt += psize;
 
 		  if (BGP_DEBUG (normal, NORMAL))
-		    zlog_debug ("%s rcvd %s %s seq %u %s/%d ge %d le %d%s",
-			       peer->host,
-			       (common & ORF_COMMON_PART_REMOVE ? "Remove" : "Add"), 
-			       (common & ORF_COMMON_PART_DENY ? "deny" : "permit"),
-			       orfp.seq, 
-			       inet_ntop (orfp.p.family, &orfp.p.u.prefix, buf, BUFSIZ),
-			       orfp.p.prefixlen, orfp.ge, orfp.le,
-			       ok ? "" : " MALFORMED");
-                  
+		    {
+		      char buf[INET6_BUFSIZ];
+
+		      zlog_debug ("%s rcvd %s %s seq %u %s/%d ge %d le %d%s",
+			         peer->host,
+			         (common & ORF_COMMON_PART_REMOVE ? "Remove" : "Add"),
+			         (common & ORF_COMMON_PART_DENY ? "deny" : "permit"),
+			         orfp.seq,
+			         inet_ntop (orfp.p.family, &orfp.p.u.prefix, buf, INET6_BUFSIZ),
+			         orfp.p.prefixlen, orfp.ge, orfp.le,
+			         ok ? "" : " MALFORMED");
+		    }
+
 		  if (ok)
 		    ret = prefix_bgp_orf_set (name, afi, &orfp,
 				   (common & ORF_COMMON_PART_DENY ? 0 : 1 ),
