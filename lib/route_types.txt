@@ -71,4 +71,3 @@ ZEBRA_ROUTE_HSLS,   "Hazy-Sighted Link State Protocol (HSLS)"
 ZEBRA_ROUTE_OLSR,   "Optimized Link State Routing (OLSR)"
 ZEBRA_ROUTE_BATMAN, "Better Approach to Mobile Ad-Hoc Networking (BATMAN)"
 ZEBRA_ROUTE_BABEL,  "Babel routing protocol (Babel)"
-
